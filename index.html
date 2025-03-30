@@ -67,28 +67,31 @@ function distance(a, b) {
       let maxY = Math.max(...fingertips.map(p => p.y));
       let boxWidth = maxX - minX;
       let boxHeight = maxY - minY;
-      if (boxWidth < 0.07 && boxHeight < 0.07) { // 阈值可根据测试结果调整
+      if (boxWidth < 0.3 && boxHeight < 0.3) {
           return "Punch";
       }
 
       // 3. Thumbs Up: if thumb tip is significantly above the other four fingertips  
       // (i.e. its y is smaller than those of index, middle, ring, and pinky by at least 0.03)
-      if (thumbTip.y < indexTip.y - 0.03 &&
-          thumbTip.y < middleTip.y - 0.03 &&
-          thumbTip.y < ringTip.y - 0.03 &&
-          thumbTip.y < pinkyTip.y - 0.03) {
+      if (thumbTip.y < indexTip.y - 0.1 &&
+          thumbTip.y < middleTip.y - 0.1 &&
+          thumbTip.y < ringTip.y - 0.1 &&
+          thumbTip.y < pinkyTip.y - 0.1) {
           return "Thumbs Up";
       }
 
       // 4. Thumbs Down: if thumb tip is significantly below the other four fingertips  
       // (i.e. its y is larger than those of index, middle, ring, and pinky by at least 0.03)
-      if (thumbTip.y > indexTip.y + 0.03 &&
-          thumbTip.y > middleTip.y + 0.03 &&
-          thumbTip.y > ringTip.y + 0.03 &&
-          thumbTip.y > pinkyTip.y + 0.03) {
+      if (thumbTip.y > indexTip.y + 0.1 &&
+          thumbTip.y > middleTip.y + 0.1 &&
+          thumbTip.y > ringTip.y + 0.1 &&
+          thumbTip.y > pinkyTip.y + 0.1) {
           return "Thumbs Down";
       }
-
+      // 6. Wave: if five fingers are spread out (bounding box is large)
+      if (boxWidth > 0.5 || boxHeight > 0.5) { 
+          return "Wave";
+      }
       return "No gesture detected";
     }
 
