@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Gesture Recognition Test</title>
+  <!-- Include Mediapipe Hands library and utilities -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <style>
+    #video, #output {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #gesture {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 24px;
+      color: rgb(0, 0, 0);
+      background: rgba(255, 255, 255, 0.7);
+      padding: 5px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Video element for capturing the camera stream -->
+  <video id="video" width="640" height="480" autoplay muted></video>
+  <!-- Canvas for displaying processed results -->
+  <canvas id="output" width="640" height="480"></canvas>
+  <!-- Div to display detected gesture information -->
+  <div id="gesture">Waiting for detection...</div>
+  <script>
+    const videoElement = document.getElementById('video');
+    const canvasElement = document.getElementById('output');
+    const canvasCtx = canvasElement.getContext('2d');
+    const gestureDiv = document.getElementById('gesture');
+
+    // Function to process the results returned by the model
+    function onResults(results) {
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+      
+      // If hand landmarks are detected, draw connectors and landmarks
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        for (const landmarks of results.multiHandLandmarks) {
+          drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 5});
+          drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 2});
+        }
+        gestureDiv.innerText = "Gesture detected!";
+      } else {
+        gestureDiv.innerText = "No gesture detected";
+      }
+      canvasCtx.restore();
+    }
+
+    // Initialize the Mediapipe Hands model
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    hands.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.5
+    });
+    hands.onResults(onResults);
+
+    // Use the Camera utility to capture the video stream
+    const camera = new Camera(videoElement, {
+      onFrame: async () => {
+        await hands.send({image: videoElement});
+      },
+      width: 640,
+      height: 480
+    });
+    camera.start();
+  </script>
+</body>
+</html>
