@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Fixed Handpose Recognition</title>
+  <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
+  <style>
+    /* No mirror transform is applied */
+    #video, #output {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #gesture {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 24px;
+      color: white;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 8px;
+      border-radius: 5px;
+      z-index: 100;
+    }
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" width="640" height="480" autoplay muted playsinline></video>
+  <canvas id="output" width="640" height="480"></canvas>
+  <div id="gesture">Initializing...</div>
+
+  <script>
+    const videoElement = document.getElementById('video');
+    const canvasElement = document.getElementById('output');
+    const canvasCtx = canvasElement.getContext('2d');
+    const gestureDiv = document.getElementById('gesture');
+
+    // Identity function: return the original coordinates
+    const correctCoordinates = (point) => ({
+      x: point[0],
+      y: point[1]
+    });
+
+    // Initialize video stream
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        videoElement.srcObject = stream;
+        return videoElement.play();
+      })
+      .then(() => initHandpose())
+      .catch(err => {
+        gestureDiv.textContent = `Error: ${err.message}`;
+        console.error(err);
+      });
+
+    // Gesture classification function
+    function classifyGesture(landmarks) {
+      const getPoint = index => correctCoordinates(landmarks[index]);
+      const thumbTip = getPoint(4);
+      const indexTip = getPoint(8);
+      const middleTip = getPoint(12);
+      const ringTip = getPoint(16);
+      const pinkyTip = getPoint(20);
+
+      // 1. Pinch: if thumb and index tips are very close (< 30 pixels)
+      const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+      if (pinchDist < 30) return "Pinch 👌";
+
+      // 2. Fist (Punch): if all five fingertips are very close together (bounding box < 60 pixels)
+      const fingertips = [thumbTip, indexTip, middleTip, ringTip, pinkyTip];
+      const xs = fingertips.map(p => p.x);
+      const ys = fingertips.map(p => p.y);
+      const boxWidth = Math.max(...xs) - Math.min(...xs);
+      const boxHeight = Math.max(...ys) - Math.min(...ys);
+      if (boxWidth < 60 && boxHeight < 60) return "Fist ✊";
+
+      // 3. Wave: if five fingers are spread out (bounding box > 180 pixels)
+      if (boxWidth > 180 || boxHeight > 180) return "Wave 👋";
+
+      // 4. Thumbs Up/Down detection
+      const thumbY = thumbTip.y;
+      const otherYs = [indexTip.y, middleTip.y, ringTip.y, pinkyTip.y];
+      if (thumbY < Math.min(...otherYs) - 40) return "Thumbs Up 👍";
+      if (thumbY > Math.max(...otherYs) + 40) return "Thumbs Down 👎";
+
+      return "No gesture";
+    }
+
+    // Draw landmarks on the canvas (red circles)
+    function drawLandmarks(landmarks) {
+      canvasCtx.fillStyle = "#FF0000";
+      landmarks.forEach(point => {
+        const corrected = correctCoordinates(point);
+        canvasCtx.beginPath();
+        canvasCtx.arc(corrected.x, corrected.y, 5, 0, Math.PI * 2);
+        canvasCtx.fill();
+      });
+    }
+
+    // Initialize Handpose model using ml5
+    function initHandpose() {
+      const options = {
+        flipHorizontal: false,  // Do not flip horizontal
+        maxContinuousChecks: Infinity,
+        detectionConfidence: 0.8,
+        scoreThreshold: 0.7
+      };
+
+      const handpose = ml5.handpose(videoElement, options, () => {
+        gestureDiv.textContent = "Ready! Show your hand";
+        handpose.on('predict', results => {
+          canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+          // Draw the video frame on canvas (no flip here)
+          canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+          if (results.length > 0) {
+            results.forEach(prediction => {
+              drawLandmarks(prediction.landmarks);
+              gestureDiv.textContent = classifyGesture(prediction.landmarks);
+            });
+          } else {
+            gestureDiv.textContent = "No hands detected";
+          }
+        });
+
+        // Start prediction loop
+        function predict() {
+          handpose.predict();
+          requestAnimationFrame(predict);
+        }
+        predict();
+      });
+    }
+  </script>
+</body>
+</html>
