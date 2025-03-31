@@ -68,7 +68,7 @@
 
       // 1. Pinch: if thumb and index tips are very close (< 30 pixels)
       const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
-      if (pinchDist < 30) return "Pinch 👌";
+      if (pinchDist < 10) return "Pinch 👌";
 
       // 2. Fist (Punch): if all five fingertips are very close together (bounding box < 60 pixels)
       const fingertips = [thumbTip, indexTip, middleTip, ringTip, pinkyTip];
@@ -76,16 +76,17 @@
       const ys = fingertips.map(p => p.y);
       const boxWidth = Math.max(...xs) - Math.min(...xs);
       const boxHeight = Math.max(...ys) - Math.min(...ys);
-      if (boxWidth < 60 && boxHeight < 60) return "Fist ✊";
+      if (boxWidth < 100 && boxHeight < 80) return "Fist ✊";
 
-      // 3. Wave: if five fingers are spread out (bounding box > 180 pixels)
+      
+      // 4. Wave: if five fingers are spread out (bounding box > 180 pixels)
       if (boxWidth > 180 || boxHeight > 180) return "Wave 👋";
 
-      // 4. Thumbs Up/Down detection
+      // 3. Thumbs Up/Down detection
       const thumbY = thumbTip.y;
       const otherYs = [indexTip.y, middleTip.y, ringTip.y, pinkyTip.y];
-      if (thumbY < Math.min(...otherYs) - 40) return "Thumbs Up 👍";
-      if (thumbY > Math.max(...otherYs) + 40) return "Thumbs Down 👎";
+      if (thumbY < Math.min(...otherYs) - 70) return "Thumbs Up 👍";
+      if (thumbY > Math.max(...otherYs) + 70) return "Thumbs Down 👎";
 
       return "No gesture";
     }
